@@ -1,0 +1,52 @@
+# Our fork's build: only the wheel the bot needs (CPython 3.12, Linux x86_64), published as a
+# GitHub release of this fork. Upstream's build.yml stays untouched.
+name: HQ audio wheel
+permissions:
+  contents: write
+on:
+  push:
+    branches: [ hq-audio ]
+  workflow_dispatch:
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/pytgcalls/ntgcalls/manylinux-x86_64:latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install build requirements
+        run: python3 -m pip install "git+https://github.com/pytgcalls/cibuildwheel.git" setuptools
+
+      - name: Build wheel
+        run: python3 -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BUILD: cp312-manylinux_x86_64
+          CIBW_CONTAINER_ENGINE: none
+          CIBW_ENVIRONMENT: "PYPI_TAGS=1"
+          CIBW_TEST_SKIP: "*"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ntgcalls-hq-audio-wheel
+          path: ./wheelhouse/*.whl
+          if-no-files-found: error
+
+  release:
+    needs: wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ntgcalls-hq-audio-wheel
+          path: wheelhouse
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="hq-audio-${GITHUB_SHA::7}"
+          gh release create "$tag" wheelhouse/*.whl --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$tag" --notes "ntgcalls with stereo Opus at 128 kbps for music"
