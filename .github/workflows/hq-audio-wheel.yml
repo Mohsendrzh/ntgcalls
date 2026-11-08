@@ -49,4 +49,4 @@ jobs:
         run: |
           tag="hq-audio-${GITHUB_SHA::7}"
           gh release create "$tag" wheelhouse/*.whl --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "$tag" --notes "ntgcalls with stereo Opus at 128 kbps for music"
+            --title "$tag" --notes "ntgcalls with stereo Opus at 510 kbps for music"

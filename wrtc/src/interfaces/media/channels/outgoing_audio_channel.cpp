@@ -42,10 +42,11 @@ namespace wrtc::interfaces::media::channels {
                 codec.SetParam(webrtc::kCodecParamUseInbandFec, 1);
                 codec.SetParam(webrtc::kCodecParamPTime, 60);
                 // Music, not speech: stereo (which also switches Opus from VoIP to its audio
-                // mode) at 128 kbps, instead of WebRTC's default of mono at 32 kbps
+                // mode) at 510 kbps, Opus's highest, instead of WebRTC's default of mono at
+                // 32 kbps; no source a song comes in (320 kbps MP3 included) loses detail
                 codec.SetParam(webrtc::kCodecParamStereo, 1);
                 codec.SetParam(webrtc::kCodecParamSPropStereo, 1);
-                codec.SetParam(webrtc::kCodecParamMaxAverageBitrate, 128000);
+                codec.SetParam(webrtc::kCodecParamMaxAverageBitrate, 510000);
                 for (const auto& [type, subtype] : feedbackTypes) {
                     codec.AddFeedbackParam(webrtc::FeedbackParam(type, subtype));
                 }
