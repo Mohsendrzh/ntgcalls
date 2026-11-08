@@ -11,6 +11,7 @@
 #include <api/rtc_event_log/rtc_event_log_factory.h>
 #include <api/audio_codecs/builtin_audio_encoder_factory.h>
 #include <api/audio_codecs/builtin_audio_decoder_factory.h>
+#include <api/audio_codecs/opus/audio_encoder_opus.h>
 #include <pc/media_factory.h>
 #include <wrtc/interfaces/media/audio_device_module.hpp>
 #include <wrtc/utils/java_context.hpp>
@@ -21,6 +22,38 @@ extern "C" {
 
 #include <wrtc/video_factory/video_factory_config.hpp>
 #include <wrtc/video_factory/hardware/android/video_factory.hpp>
+
+namespace {
+    // WebRTC's own encoders, except Opus runs at complexity 10 (its best) instead of the 9
+    // WebRTC fixes on desktop: we send music, and a server has the CPU to spare. WebRTC has
+    // no setting for this, so the Opus encoder is made here from its config
+    class MusicAudioEncoderFactory final : public webrtc::AudioEncoderFactory {
+    public:
+        std::vector<webrtc::AudioCodecSpec> GetSupportedEncoders() override {
+            return builtin_->GetSupportedEncoders();
+        }
+
+        std::optional<webrtc::AudioCodecInfo> QueryAudioEncoder(const webrtc::SdpAudioFormat& format) override {
+            return builtin_->QueryAudioEncoder(format);
+        }
+
+        std::unique_ptr<webrtc::AudioEncoder> Create(
+            const webrtc::Environment& env,
+            const webrtc::SdpAudioFormat& format,
+            Options options
+        ) override {
+            if (auto config = webrtc::AudioEncoderOpus::SdpToConfig(format)) {
+                config->complexity = 10;
+                config->low_rate_complexity = 10;
+                return webrtc::AudioEncoderOpus::MakeAudioEncoder(env, *config, options);
+            }
+            return builtin_->Create(env, format, options);
+        }
+
+    private:
+        webrtc::scoped_refptr<webrtc::AudioEncoderFactory> builtin_ = webrtc::CreateBuiltinAudioEncoderFactory();
+    };
+}
 
 namespace wrtc::interfaces::peer_connection {
     std::mutex PeerConnectionFactory::mutex_{};
@@ -50,7 +83,7 @@ namespace wrtc::interfaces::peer_connection {
                 audio_device_module_ = webrtc::make_ref_counted<media::AudioDeviceModule>();
             return audio_device_module_;
         });
-        dependencies.audio_encoder_factory = webrtc::CreateBuiltinAudioEncoderFactory();
+        dependencies.audio_encoder_factory = webrtc::make_ref_counted<MusicAudioEncoderFactory>();
         dependencies.audio_decoder_factory = webrtc::CreateBuiltinAudioDecoderFactory();
 #ifdef IS_ANDROID
         dependencies.video_encoder_factory = android::create_video_encoder_factory(static_cast<JNIEnv*>(jni_env_));
