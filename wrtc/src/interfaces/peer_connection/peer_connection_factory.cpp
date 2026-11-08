@@ -27,7 +27,7 @@ namespace {
     // WebRTC's own encoders, except Opus runs at complexity 10 (its best) instead of the 9
     // WebRTC fixes on desktop: we send music, and a server has the CPU to spare. WebRTC has
     // no setting for this, so the Opus encoder is made here from its config
-    class MusicAudioEncoderFactory final : public webrtc::AudioEncoderFactory {
+    class MusicAudioEncoderFactory : public webrtc::AudioEncoderFactory {
     public:
         std::vector<webrtc::AudioCodecSpec> GetSupportedEncoders() override {
             return builtin_->GetSupportedEncoders();
